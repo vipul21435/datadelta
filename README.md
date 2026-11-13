@@ -192,7 +192,8 @@ The formulas:
 ## Results on public data
 
 Two pairs, fetched at pinned revisions with `bash examples/fetch_data.sh data`. No rows from either dataset are
-committed here. Runtimes are wall-clock for one process on a laptop, reading included.
+committed here. Runtimes are wall-clock for one process, reading included, measured on a laptop that was busy
+with other work; each is given as the range over two runs, the slower one at a load average above 100.
 
 **GSM8K test split -> GSM8K-Platinum.** [GSM8K](https://huggingface.co/datasets/openai/gsm8k) (MIT licence),
 `main` test split, 1,319 records. [GSM8K-Platinum](https://huggingface.co/datasets/madrylab/gsm8k-platinum)
@@ -200,7 +201,7 @@ committed here. Runtimes are wall-clock for one process on a laptop, reading inc
 reports 110 questions rejected and 10 relabelled, and it adds a `cleaning_status` column.
 
 ```
-datadelta diff data/gsm8k/gsm8k_test.parquet data/gsm8k/platinum_test.parquet     # 0.56 s
+datadelta diff data/gsm8k/gsm8k_test.parquet data/gsm8k/platinum_test.parquet     # 0.56 to 2.2 s
 ```
 
 | status | records |
@@ -223,7 +224,7 @@ records; its card metadata says CC BY 4.0, while its licensing section says CC B
 instruction is unique, so `instruction` serves as the key:
 
 ```
-datadelta diff data/alpaca/alpaca_data.json data/alpaca/alpaca_data_cleaned.json --key instruction    # 33.7 s
+datadelta diff data/alpaca/alpaca_data.json data/alpaca/alpaca_data_cleaned.json --key instruction    # 34 to 133 s
 ```
 
 | status | records |
@@ -244,7 +245,7 @@ characters, median 185 -> 477, KS D 0.339, PSI 0.711. For `input`, KS D is 0.028
 The same pair aligned by content alone, the harder case:
 
 ```
-datadelta diff data/alpaca/alpaca_data.json data/alpaca/alpaca_data_cleaned.json --format json    # 43.6 s
+datadelta diff data/alpaca/alpaca_data.json data/alpaca/alpaca_data_cleaned.json --format json    # 44 to 109 s
 ```
 
 This finds 1,832 pairs by exact hash, 692 by loose hash and 12,852 by token similarity, and leaves 36,626 removed
@@ -254,7 +255,8 @@ when they do not, and its result depends on `--min-similarity`.
 
 **Synthetic scale.** `tests/test_scale.py` builds 100,000 records (2 % removed, 7 % edited or relabelled, 2 % added,
 shuffled), diffs them with and without a key, and checks that both give the same counts. The whole test, data
-generation included, took 8.5 s (`pytest tests/test_scale.py --durations=1`).
+generation included, took between 8.5 s and 47 s (`pytest tests/test_scale.py --durations=1`); it asserts counts
+only, not time.
 
 ## Limitations
 
