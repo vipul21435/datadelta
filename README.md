@@ -116,7 +116,11 @@ digits stay strings. `--no-infer-types` keeps every cell a string.
    "Scaling Up All Pairs Similarity Search" (WWW 2007). On long records that prefix is long and the candidate lists
    grow very large. With the exact index (`--block-tokens 0`), the Alpaca content run below was still running after
    2.5 minutes when stopped. By default `--block-tokens 8` indexes at most the 8 rarest tokens per record. That
-   bounds the work, but it can miss a qualifying pair whose shared tokens all lie outside both capped prefixes.
+   bounds the work, but a pair becomes a candidate only if some token lies inside both capped prefixes, so a
+   qualifying pair is missed when none of its shared tokens does. On Alpaca (below), 15 of the 12,725
+   instruction-matched pairs with Jaccard at least 0.5 that the hash passes leave behind (0.12 %) share no token
+   inside both 8-token prefixes
+   (`python examples/blocking_recall.py data/alpaca/alpaca_data.json data/alpaca/alpaca_data_cleaned.json --key instruction`).
 
 Ties are broken by rules that do not depend on which file is called old, so `diff(B, A)` mirrors `diff(A, B)`.
 Property tests check on random data that what is added one way is removed the other way, that edited pairs mirror,

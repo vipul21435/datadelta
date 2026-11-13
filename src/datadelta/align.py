@@ -105,10 +105,11 @@ def similar_pairs(
     |x| - ceil(t * |x|) + 1 rarest ones; only pairs that do are scored. With
     ``block_tokens`` unset (or 0) the result equals a brute-force scan of all pairs.
 
-    ``block_tokens = k`` indexes at most the k rarest tokens of each set. That bounds the
-    work on large pools of long records, and it can miss a qualifying pair whose shared
-    tokens are all outside both capped prefixes. Sets whose exact prefix is at most k
-    tokens long lose nothing.
+    ``block_tokens = k`` indexes and probes at most the k rarest tokens of each set. That
+    bounds the work on large pools of long records. A pair is then a candidate only if
+    some token lies inside both capped prefixes, so a qualifying pair is missed when none
+    of its shared tokens does. A pair whose two exact prefixes are both at most k tokens
+    long is never missed.
     """
     if not 0.0 < threshold <= 1.0:
         raise ValueError("threshold must be in (0, 1]")
