@@ -122,10 +122,12 @@ digits stay strings. `--no-infer-types` keeps every cell a string.
    inside both 8-token prefixes
    (`python examples/blocking_recall.py data/alpaca/alpaca_data.json data/alpaca/alpaca_data_cleaned.json --key instruction`).
 
-Ties are broken by rules that do not depend on which file is called old, so `diff(B, A)` mirrors `diff(A, B)`.
-Property tests check on random data that what is added one way is removed the other way, that edited pairs mirror,
-and that `diff(A, A)` is empty. Reordering is counted as the number of paired records outside one longest
-increasing subsequence of new positions. A field that appears in only one version is reported as a schema change
+Ties are broken by rules that do not depend on which file is called old, so the pairs, the record statuses and the
+number of moved records of `diff(B, A)` mirror those of `diff(A, B)`. Property tests check on random data that what
+is added one way is removed the other way, that edited pairs mirror, and that `diff(A, A)` is empty. Reordering is
+counted as the number of paired records outside one longest increasing subsequence of new positions. That
+subsequence is not unique, so which records carry the `moved` flag can differ between the two directions, while
+their number does not. A field that appears in only one version is reported as a schema change
 and left out of record comparison, because otherwise a new column would mark every record as edited
 (`--schema-fields-as-edits` turns this off).
 
