@@ -88,12 +88,18 @@ def read_json(path: str | Path) -> list[Record]:
     except RecursionError as exc:
         raise FormatError(f"{path!s}: JSON nested too deeply") from exc
     if isinstance(obj, dict):
-        # Accept {"data": [...]} style wrappers with exactly one list of objects.
-        lists = [v for v in obj.values() if isinstance(v, list)]
-        if len(lists) == 1:
-            obj = lists[0]
-        else:
+        # {"data": [...]} style wrappers: unwrap exactly one non-empty list of objects.
+        wrapped = [
+            k
+            for k, v in obj.items()
+            if isinstance(v, list) and v and all(isinstance(item, dict) for item in v)
+        ]
+        if len(wrapped) > 1:
+            names = ", ".join(wrapped)
+            raise FormatError(f"{path!s}: several lists of records ({names}); save one per file")
+        if not wrapped:
             return [obj]
+        obj = obj[wrapped[0]]
     if not isinstance(obj, list) or not all(isinstance(item, dict) for item in obj):
         raise FormatError(f"{path!s}: expected a JSON array of objects")
     return obj
@@ -102,6 +108,10 @@ def read_json(path: str | Path) -> list[Record]:
 def read_csv(path: str | Path, delimiter: str = ",", infer_types: bool = True) -> list[Record]:
     with open(path, encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle, delimiter=delimiter)
+        header = reader.fieldnames or []
+        repeated = sorted({name for name in header if header.count(name) > 1})
+        if repeated:
+            raise FormatError(f"{path!s}: repeated header column(s): {', '.join(repeated)}")
         records: list[Record] = []
         for row in reader:
             if None in row:

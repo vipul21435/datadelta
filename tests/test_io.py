@@ -101,3 +101,21 @@ def test_zero_padded_codes_are_edits_and_keys_do_not_collide(tmp_path):
     result = diff(read_records(a), read_records(b), key=["k"])
     assert result.counts()["edited"] == 2
     assert result.method_counts()["key"] == 2
+
+
+def test_json_objects_are_unwrapped_only_when_unambiguous(tmp_path):
+    path = tmp_path / "a.json"
+    path.write_text(json.dumps({"train": [{"id": 1}], "test": [{"id": 2}]}), encoding="utf-8")
+    with pytest.raises(FormatError, match="several lists"):
+        read_records(path)
+    path.write_text(json.dumps({"id": 1, "tags": ["a", "b"]}), encoding="utf-8")
+    assert read_records(path) == [{"id": 1, "tags": ["a", "b"]}]
+    path.write_text(json.dumps({"id": 1, "tags": []}), encoding="utf-8")
+    assert read_records(path) == [{"id": 1, "tags": []}]
+
+
+def test_repeated_csv_header_is_an_error(tmp_path):
+    path = tmp_path / "a.csv"
+    path.write_text("id,x,x\n1,a,b\n", encoding="utf-8")
+    with pytest.raises(FormatError, match="repeated header"):
+        read_records(path)

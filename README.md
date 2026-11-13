@@ -91,7 +91,8 @@ schema change. Exit status 2 means the input could not be read. `examples/quicks
 
 ## How it works
 
-**Reading.** JSONL, a JSON array (or an object holding one list of records), CSV and TSV, and Parquet with the
+**Reading.** JSONL, a JSON array (or an object holding exactly one list of records; several such lists are an
+error, and any other object is one record), CSV and TSV (a repeated header is an error), and Parquet with the
 extra. In CSV and TSV, empty cells become null and a cell becomes a number only when it is plain ASCII digits with
 an optional minus, a fraction or an exponent, and no zero padding or plus sign; "007", "+5", "1_000" and non-ASCII
 digits stay strings. `--no-infer-types` keeps every cell a string.
