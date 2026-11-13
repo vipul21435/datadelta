@@ -284,6 +284,9 @@ only, not time.
 - [datasieve](https://github.com/vipul21435/datasieve) finds duplicates within one dataset; datadelta compares two
   versions.
 - [sftlint](https://github.com/vipul21435/sftlint) lints one chat or tool-calling dataset.
+- [divscore](https://github.com/vipul21435/divscore): diversity of a text dataset measured at a fixed budget of tokens or texts.
+- [snippetcheck](https://github.com/vipul21435/snippetcheck): static checks for the code inside instruction and chat datasets.
+- [chatconv](https://github.com/vipul21435/chatconv): converts chat datasets between formats and reports what each conversion loses.
 
 ## Licence
 
