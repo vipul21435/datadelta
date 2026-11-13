@@ -25,7 +25,7 @@ Homepage = "https://github.com/vipul21435/datadelta"
 
 [project.optional-dependencies]
 parquet = ["pyarrow>=12"]
-dev = ["pytest>=7", "pytest-cov>=4", "ruff>=0.5", "scipy>=1.10"]
+dev = ["pytest>=7", "pytest-cov>=4", "ruff>=0.5", "scipy>=1.10", "pyarrow>=12"]
 
 [project.scripts]
 datadelta = "datadelta.cli:main"
