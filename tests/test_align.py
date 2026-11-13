@@ -162,3 +162,22 @@ def test_capped_index_finds_a_subset_and_is_exact_for_short_prefixes():
 def test_negative_block_tokens_rejected():
     with pytest.raises(ValueError):
         align([{"t": "a"}], [{"t": "b"}], block_tokens=-1)
+
+
+def test_misspelt_key_is_an_error():
+    with pytest.raises(ValueError, match="nosuchkey"):
+        align([{"id": 1}], [{"id": 1}], key=["nosuchkey"])
+
+
+def test_keyless_record_can_pair_with_an_unmatched_keyed_record():
+    old = [{"id": 1, "t": "alpha beta gamma delta"}, {"id": 2, "t": "one two three four"}]
+    new = [{"t": "alpha beta gamma delta"}, {"id": 2, "t": "one two three four"}]
+    al = align(old, new, key=["id"])
+    assert {(m.old, m.new) for m in al.matches} == {(0, 0), (1, 1)}
+    back = align(new, old, key=["id"])
+    assert {(m.new, m.old) for m in back.matches} == {(0, 0), (1, 1)}
+
+
+def test_two_keyed_records_are_never_paired_by_content():
+    al = align([{"id": 1, "t": "same text"}], [{"id": 2, "t": "same text"}], key=["id"])
+    assert al.matches == [] and al.old_only == [0] and al.new_only == [0]

@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from .align import Alignment, align, jaccard
+from .align import Alignment, align, jaccard, key_of
 from .compare import FieldChange, compare_records
 from .normalize import STRICT, Normalization, record_hash, tokens
 
@@ -70,6 +70,7 @@ class DiffResult:
     norm: Normalization = STRICT
     schema_only_fields: list[str] = field(default_factory=list)
     """Fields present in only one version; reported as schema changes, not record edits."""
+    warnings: list[str] = field(default_factory=list)
 
     def counts(self) -> dict[str, int]:
         c = Counter(ch.status for ch in self.changes)
@@ -232,4 +233,15 @@ def diff(
             c.new_index if c.new_index is not None else -1,
         )
     )
-    return DiffResult(len(old), len(new), changes, al, list(key) if key else None, norm, only)
+    warnings = []
+    if key:
+        for label, recs in (("old", old), ("new", new)):
+            missing = sum(1 for r in recs if key_of(r, key) is None)
+            if missing:
+                warnings.append(
+                    f"{missing} of {len(recs)} {label} records lack the key; "
+                    "they were aligned by content"
+                )
+    return DiffResult(
+        len(old), len(new), changes, al, list(key) if key else None, norm, only, warnings
+    )

@@ -102,6 +102,13 @@ def _key(args: argparse.Namespace) -> list[str] | None:
 
 
 def _run_diff(args: argparse.Namespace, old: list[Record], new: list[Record]) -> DiffResult:
+    result = _diff(args, old, new)
+    for line in result.warnings:
+        print(f"datadelta: warning: {line}", file=sys.stderr)
+    return result
+
+
+def _diff(args: argparse.Namespace, old: list[Record], new: list[Record]) -> DiffResult:
     norm = Normalization(
         key_order=args.keep_key_order,
         whitespace=args.normalize_whitespace,

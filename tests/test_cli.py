@@ -115,3 +115,14 @@ def test_suffix_diff():
     assert suffix_diff("abc def", "abc") == "abc[- def-]"
     assert suffix_diff("abc", "abcdef") == "abc{+def+}"
     assert suffix_diff("x" * 50 + "y", "x" * 50, context=5) == "...xxxxx[-y-]"
+
+
+def test_unknown_key_exits_2_and_partial_key_warns(tmp_path, capsys):
+    a, b = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    _write_jsonl(a, [{"id": 1, "t": "x"}, {"t": "no key"}])
+    _write_jsonl(b, [{"id": 1, "t": "x"}, {"t": "no key"}])
+    assert main(["diff", str(a), str(b), "--key", "nosuchkey"]) == 2
+    assert "nosuchkey" in capsys.readouterr().err
+    assert main(["diff", str(a), str(b), "--key", "id"]) == 0
+    err = capsys.readouterr().err
+    assert "1 of 2 old records lack the key" in err

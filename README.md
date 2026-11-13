@@ -97,8 +97,11 @@ numbers become numbers, empty cells become null; `--no-infer-types` keeps string
 **Alignment** is a cascade; each step sees only the records the previous steps left unpaired.
 
 1. `--key a,b`: equal key values mean the same record. This is deterministic, rule-based linkage in record-linkage
-   terms. Records missing a key field fall through to the content steps; if a key value repeats, its copies are
-   paired by content and then by position.
+   terms. If a key value repeats, its copies are paired by content and then by position. A record missing a key
+   field goes through the content steps below, first against the other version's key-less records and then
+   against its keyed records that the key left unpaired; two keyed records are never paired by content. A key
+   field that is in no record of a version is an error (exit 2), and records missing the key give a warning on
+   stderr.
 2. Exact content: equal canonical JSON (keys sorted unless `--keep-key-order`; optional `--normalize-whitespace`,
    `--unicode NFC|NFKC`, `--ignore-case`, `--ignore-field F`). Repeated content pairs first copy with first copy.
 3. Loose content: equal after every normalisation at once (whitespace, NFKC, case folding, punctuation removed).

@@ -278,8 +278,11 @@ def align(
 
     With ``key``, records whose key fields are equal are paired; if a key value repeats
     within a version, the copies under it are paired by content and then by position.
-    Records missing a key field, and every record when no key is given, are aligned by
-    content: exact hash, then loose hash, then fuzzy token similarity.
+    Records missing a key field are aligned by content, first with the other version's
+    key-less records and then with its keyed records that the key left unpaired; two
+    keyed records are never paired by content. Without ``key`` every record is aligned
+    by content: exact hash, then loose hash, then fuzzy token similarity. A key field
+    that is in no record of a version raises ValueError.
 
     ``block_tokens`` caps the candidate index at that many rarest tokens per record (see
     :func:`similar_pairs`); 0 or None makes the fuzzy step exact.
@@ -294,46 +297,58 @@ def align(
     old_only: list[int] = []
     new_only: list[int] = []
 
+    def content(o: list[int], n: list[int]) -> tuple[list[Match], list[int], list[int]]:
+        if o and n:
+            return _content_align(oc, nc, o, n, min_similarity, fuzzy, block_tokens)
+        return [], o, n
+
     if key:
+        for label, recs in (("old", old_records), ("new", new_records)):
+            for name in key:
+                if recs and not any(name in r for r in recs):
+                    raise ValueError(f"key field {name!r} is in no record of the {label} version")
         old_groups: dict[str | None, list[int]] = defaultdict(list)
         new_groups: dict[str | None, list[int]] = defaultdict(list)
         for i, rec in enumerate(old_records):
             old_groups[key_of(rec, key)].append(i)
         for j, rec in enumerate(new_records):
             new_groups[key_of(rec, key)].append(j)
+        keyed_old: list[int] = []
+        keyed_new: list[int] = []
         for k, olds in old_groups.items():
             if k is None:
                 continue
             news = new_groups.get(k)
             if not news:
-                old_only += olds
+                keyed_old += olds
                 continue
             if len(olds) == 1 and len(news) == 1:
                 matches.append(Match(olds[0], news[0], "key"))
                 continue
-            m, ol, nl = _content_align(oc, nc, olds, news, min_similarity, fuzzy, block_tokens)
+            m, ol, nl = content(olds, news)
             matches += m
             for i, j in zip(ol, nl, strict=False):
                 matches.append(Match(i, j, "key"))
-            old_only += ol[len(nl) :]
-            new_only += nl[len(ol) :]
+            keyed_old += ol[len(nl) :]
+            keyed_new += nl[len(ol) :]
         for k, news in new_groups.items():
             if k is not None and k not in old_groups:
-                new_only += news
-        rest_old = old_groups.get(None, [])
-        rest_new = new_groups.get(None, [])
-    else:
-        rest_old = list(range(len(old_records)))
-        rest_new = list(range(len(new_records)))
-
-    if rest_old and rest_new:
-        m, ol, nl = _content_align(oc, nc, rest_old, rest_new, min_similarity, fuzzy, block_tokens)
+                keyed_new += news
+        # Key-less records meet key-less records first, then keyed records the key left
+        # unpaired. Two keyed records are never paired by content.
+        m, ol, nl = content(old_groups.get(None, []), new_groups.get(None, []))
         matches += m
-        old_only += ol
-        new_only += nl
+        m, ol, keyed_new = content(ol, keyed_new)
+        matches += m
+        m, keyed_old, nl = content(keyed_old, nl)
+        matches += m
+        old_only = ol + keyed_old
+        new_only = nl + keyed_new
     else:
-        old_only += rest_old
-        new_only += rest_new
+        m, old_only, new_only = content(
+            list(range(len(old_records))), list(range(len(new_records)))
+        )
+        matches += m
 
     matches.sort(key=lambda mt: mt.old)
     order = [mt.new for mt in matches]
