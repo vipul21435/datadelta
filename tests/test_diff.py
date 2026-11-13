@@ -114,3 +114,21 @@ def test_field_in_one_version_only_is_not_a_record_edit():
     assert [f.field for f in result.changes[2].fields] == ["a"]
     counted = diff(old, new, schema_fields_as_edits=True)
     assert counted.counts()["edited"] == 5 and counted.schema_only_fields == []
+
+
+def test_copies_are_judged_on_whole_records_when_a_field_is_renamed():
+    old = [{"text": f"sentence {i}", "label": "x"} for i in range(10)]
+    new = [{"body": f"sentence {i}", "label": "x"} for i in range(6)]
+    result = diff(old, new)
+    counts = result.counts()
+    assert counts["unchanged"] == 6
+    assert counts["removed"] == 4 and counts["deduplicated"] == 0
+
+
+def test_no_shared_field_compares_whole_records_with_a_warning():
+    old = [{"a": f"one {i}"} for i in range(3)]
+    new = [{"b": f"one {i}"} for i in range(3)]
+    result = diff(old, new)
+    assert result.schema_only_fields == []
+    assert any("share no field" in w for w in result.warnings)
+    assert result.counts()["unchanged"] == 0

@@ -266,6 +266,10 @@ generation included, took 8.5 s (`pytest tests/test_scale.py --durations=1`).
 - The capped blocking index (`--block-tokens 8`) can miss qualifying pairs on long records, and the exact index can
   be very slow on large pools of long, similar records.
 - Greedy pairing is not a maximum-weight matching.
+- Records are paired and compared on the fields both versions share. A field present in only one version (a
+  renamed field, say) plays no part in pairing, so after a rename the records are paired on what is left; that field
+  still counts when deciding whether an unpaired record is a copy. When nothing but the key is shared, whole
+  records are compared and a warning is printed.
 - Field comparison is top-level: a change inside a nested list or object is one `value` edit, with no path into it.
   There is no notion of a renamed field either: a rename shows as one field removed and one added.
 - CSV number inference drops trailing zeros: "1.50" and "1.5" both read as 1.5. Use `--no-infer-types` when that

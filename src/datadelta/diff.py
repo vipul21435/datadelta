@@ -161,17 +161,24 @@ def diff(
     as edited; it is listed in ``schema_only_fields``. ``schema_fields_as_edits`` turns
     that off.
     """
+    warnings: list[str] = []
+    user_norm = norm
     only: list[str] = []
-    if not schema_fields_as_edits:
+    if not schema_fields_as_edits and old and new:
         old_fields = dict.fromkeys(k for r in old for k in r)
         new_fields = dict.fromkeys(k for r in new for k in r)
         only = [k for k in old_fields if k not in new_fields]
         only += [k for k in new_fields if k not in old_fields]
         only = [k for k in only if k not in norm.ignore_fields and k not in (key or ())]
-        if only and old and new:
-            norm = replace(norm, ignore_fields=tuple(norm.ignore_fields) + tuple(only))
-        else:
+        skip = set(norm.ignore_fields) | set(key or ()) | set(only)
+        shared = [k for k in old_fields if k in new_fields and k not in skip]
+        if only and not shared:
+            warnings.append(
+                "the versions share no field outside the key; whole records are compared"
+            )
             only = []
+        if only:
+            norm = replace(norm, ignore_fields=tuple(norm.ignore_fields) + tuple(only))
     al = align(
         old,
         new,
@@ -183,6 +190,12 @@ def diff(
     )
     old_hash = al.old_hash or (lambda i: record_hash(old[i], norm))
     new_hash = al.new_hash or (lambda j: record_hash(new[j], norm))
+    if only:
+        # Copies are judged on whole records, schema-only fields included.
+        old_full: Callable[[int], bytes] = lambda i: record_hash(old[i], user_norm)  # noqa: E731
+        new_full: Callable[[int], bytes] = lambda j: record_hash(new[j], user_norm)  # noqa: E731
+    else:
+        old_full, new_full = old_hash, new_hash
     changes: list[RecordChange] = []
     for m in al.matches:
         if m.method == "hash" or (old_hash(m.old) == new_hash(m.new)):
@@ -210,11 +223,11 @@ def diff(
     matched_old = {m.old for m in al.matches}
     matched_new = {m.new for m in al.matches}
     for i, status, dup in _unpaired_status(
-        al.old_only, old_hash, matched_old, "removed", "deduplicated"
+        al.old_only, old_full, matched_old, "removed", "deduplicated"
     ):
         changes.append(RecordChange(status=status, old_index=i, duplicate_of=dup))
     for j, status, dup in _unpaired_status(
-        al.new_only, new_hash, matched_new, "added", "duplicated"
+        al.new_only, new_full, matched_new, "added", "duplicated"
     ):
         changes.append(RecordChange(status=status, new_index=j, duplicate_of=dup))
     if key:
@@ -233,7 +246,6 @@ def diff(
             c.new_index if c.new_index is not None else -1,
         )
     )
-    warnings = []
     if key:
         for label, recs in (("old", old), ("new", new)):
             missing = sum(1 for r in recs if key_of(r, key) is None)
