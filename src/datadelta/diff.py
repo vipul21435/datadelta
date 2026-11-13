@@ -180,9 +180,11 @@ def diff(
         fuzzy=fuzzy,
         block_tokens=block_tokens,
     )
+    old_hash = al.old_hash or (lambda i: record_hash(old[i], norm))
+    new_hash = al.new_hash or (lambda j: record_hash(new[j], norm))
     changes: list[RecordChange] = []
     for m in al.matches:
-        if m.method == "hash":
+        if m.method == "hash" or (old_hash(m.old) == new_hash(m.new)):
             fields: list[FieldChange] = []  # equal canonical JSON: nothing to compare
         else:
             fields = compare_records(old[m.old], new[m.new], norm, rewrite_threshold)
@@ -206,8 +208,6 @@ def diff(
         )
     matched_old = {m.old for m in al.matches}
     matched_new = {m.new for m in al.matches}
-    old_hash = al.old_hash or (lambda i: record_hash(old[i], norm))
-    new_hash = al.new_hash or (lambda j: record_hash(new[j], norm))
     for i, status, dup in _unpaired_status(
         al.old_only, old_hash, matched_old, "removed", "deduplicated"
     ):

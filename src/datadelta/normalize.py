@@ -14,6 +14,7 @@ import re
 import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 _WS = re.compile(r"\s+")
@@ -50,9 +51,16 @@ def collapse_ws(text: str) -> str:
     return _WS.sub(" ", text).strip()
 
 
+@lru_cache(maxsize=65536)
+def _is_punct(ch: str) -> bool:
+    return unicodedata.category(ch).startswith("P")
+
+
 def strip_punct(text: str) -> str:
     """Drop every character in a Unicode punctuation category (P*)."""
-    return "".join(ch for ch in text if not unicodedata.category(ch).startswith("P"))
+    if text.isalnum():
+        return text
+    return "".join(ch for ch in text if not _is_punct(ch))
 
 
 def norm_text(text: str, norm: Normalization) -> str:

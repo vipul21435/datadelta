@@ -140,7 +140,11 @@ def suffix_diff(a: str, b: str, context: int = 30) -> str:
     return f"{head}{{+{b[common:]}+}}"
 
 
-def classify_text(a: str, b: str, rewrite_threshold: float = 0.5) -> str:
+def classify_text(
+    a: str, b: str, rewrite_threshold: float = 0.5, similarity: float | None = None
+) -> str:
+    """The edit class of a text change; ``similarity`` may pass a precomputed
+    :func:`word_similarity`."""
     ca, cb = collapse_ws(a), collapse_ws(b)
     if ca == cb:
         return "whitespace"
@@ -157,7 +161,9 @@ def classify_text(a: str, b: str, rewrite_threshold: float = 0.5) -> str:
         return "extension"
     if len(cb.split()) == 1 and len(ca.split()) == 1:
         return "relabel"
-    if word_similarity(a, b) < rewrite_threshold:
+    if similarity is None:
+        similarity = word_similarity(a, b)
+    if similarity < rewrite_threshold:
         return "rewrite"
     return "revision"
 
@@ -190,14 +196,15 @@ def compare_values(
         return FieldChange(name, "filled", old, new)
     if isinstance(old, str) and isinstance(new, str):
         a, b = norm_value(old, norm), norm_value(new, norm)
-        cls = classify_text(a, b, rewrite_threshold)
+        sim = word_similarity(a, b)
+        cls = classify_text(a, b, rewrite_threshold, sim)
         if cls == "whitespace":
             shown = None  # a word diff of a whitespace edit is empty; show the values
         elif cls in ("truncation", "extension"):
             shown = suffix_diff(collapse_ws(a), collapse_ws(b))
         else:
             shown = word_diff(a, b)
-        return FieldChange(name, cls, old, new, similarity=word_similarity(a, b), word_diff=shown)
+        return FieldChange(name, cls, old, new, similarity=sim, word_diff=shown)
     if is_number(old) and is_number(new):
         if type(old) is not type(new) and old == new:
             return FieldChange(name, "type_change", old, new)
