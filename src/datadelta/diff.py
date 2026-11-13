@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -112,9 +112,8 @@ class DiffResult:
 
 def _unpaired_status(
     indices: list[int],
-    records: Sequence[Record],
+    hash_of: Callable[[int], bytes],
     matched: set[int],
-    norm: Normalization,
     single: str,
     copy: str,
 ) -> list[tuple[int, str, int | None]]:
@@ -123,12 +122,12 @@ def _unpaired_status(
         return []
     first: dict[bytes, int] = {}
     for i in sorted(set(indices) | matched):
-        first.setdefault(record_hash(records[i], norm), i)
-    matched_hashes = {record_hash(records[i], norm) for i in matched}
+        first.setdefault(hash_of(i), i)
+    matched_hashes = {hash_of(i) for i in matched}
     seen: set[bytes] = set()
     out = []
     for i in indices:
-        h = record_hash(records[i], norm)
+        h = hash_of(i)
         if h in matched_hashes or h in seen:
             dup = first[h] if first[h] != i else None
             out.append((i, copy, dup))
@@ -156,9 +155,14 @@ def diff(
     al = align(old, new, key=key, norm=norm, min_similarity=min_similarity, fuzzy=fuzzy)
     changes: list[RecordChange] = []
     for m in al.matches:
-        fields = compare_records(old[m.old], new[m.new], norm, rewrite_threshold)
+        if m.method == "hash":
+            fields: list[FieldChange] = []  # equal canonical JSON: nothing to compare
+        else:
+            fields = compare_records(old[m.old], new[m.new], norm, rewrite_threshold)
         similarity = m.similarity
-        if similarity is None:
+        if similarity is None and not fields:
+            similarity = 1.0
+        elif similarity is None:
             similarity = jaccard(
                 tokens(old[m.old], norm.ignore_fields), tokens(new[m.new], norm.ignore_fields)
             )
@@ -175,12 +179,14 @@ def diff(
         )
     matched_old = {m.old for m in al.matches}
     matched_new = {m.new for m in al.matches}
+    old_hash = al.old_hash or (lambda i: record_hash(old[i], norm))
+    new_hash = al.new_hash or (lambda j: record_hash(new[j], norm))
     for i, status, dup in _unpaired_status(
-        al.old_only, old, matched_old, norm, "removed", "deduplicated"
+        al.old_only, old_hash, matched_old, "removed", "deduplicated"
     ):
         changes.append(RecordChange(status=status, old_index=i, duplicate_of=dup))
     for j, status, dup in _unpaired_status(
-        al.new_only, new, matched_new, norm, "added", "duplicated"
+        al.new_only, new_hash, matched_new, "added", "duplicated"
     ):
         changes.append(RecordChange(status=status, new_index=j, duplicate_of=dup))
     if key:

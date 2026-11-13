@@ -47,6 +47,8 @@ class Alignment:
     new_only: list[int]
     moved: set[int] = field(default_factory=set)
     """Old indices of matched records outside one longest order-preserving subsequence."""
+    old_hash: Callable[[int], bytes] | None = field(default=None, repr=False, compare=False)
+    new_hash: Callable[[int], bytes] | None = field(default=None, repr=False, compare=False)
 
     @property
     def moved_count(self) -> int:
@@ -320,4 +322,6 @@ def align(
     order = [mt.new for mt in matches]
     keep = set(longest_increasing(order))
     moved = {mt.old for pos, mt in enumerate(matches) if pos not in keep}
-    return Alignment(matches, sorted(old_only), sorted(new_only), moved)
+    return Alignment(
+        matches, sorted(old_only), sorted(new_only), moved, old_hash=oc.hash, new_hash=nc.hash
+    )
