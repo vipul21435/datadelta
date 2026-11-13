@@ -49,3 +49,16 @@ def test_tsv_and_detection(tmp_path):
     assert detect_format("x.ndjson") == "jsonl"
     with pytest.raises(FormatError):
         detect_format("x.txt")
+
+
+def test_byte_order_mark_is_ignored(tmp_path):
+    bom = "﻿"
+    csv_path = tmp_path / "bom.csv"
+    csv_path.write_text(bom + "id,name\n1,a\n2,b\n", encoding="utf-8")
+    assert read_records(csv_path) == [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]
+    jsonl_path = tmp_path / "bom.jsonl"
+    jsonl_path.write_text(bom + '{"id": 1}\n', encoding="utf-8")
+    assert read_records(jsonl_path) == [{"id": 1}]
+    json_path = tmp_path / "bom.json"
+    json_path.write_text(bom + '[{"id": 1}]', encoding="utf-8")
+    assert read_records(json_path) == [{"id": 1}]

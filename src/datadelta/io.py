@@ -54,7 +54,7 @@ def _infer_scalar(text: str) -> Any:
 
 def read_jsonl(path: str | Path) -> list[Record]:
     records: list[Record] = []
-    with open(path, encoding="utf-8") as handle:
+    with open(path, encoding="utf-8-sig") as handle:
         for lineno, line in enumerate(handle, start=1):
             if not line.strip():
                 continue
@@ -69,7 +69,7 @@ def read_jsonl(path: str | Path) -> list[Record]:
 
 
 def read_json(path: str | Path) -> list[Record]:
-    with open(path, encoding="utf-8") as handle:
+    with open(path, encoding="utf-8-sig") as handle:
         text = handle.read()
     try:
         obj = json.loads(text)
@@ -89,7 +89,7 @@ def read_json(path: str | Path) -> list[Record]:
 
 
 def read_csv(path: str | Path, delimiter: str = ",", infer_types: bool = True) -> list[Record]:
-    with open(path, encoding="utf-8", newline="") as handle:
+    with open(path, encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle, delimiter=delimiter)
         records: list[Record] = []
         for row in reader:
