@@ -234,10 +234,14 @@ def _content_align(
 
 
 def key_of(record: Record, key: Sequence[str]) -> str | None:
-    """The record's key as a canonical string, or None when a key field is missing."""
+    """The record's key as a canonical string, or None when a key field is missing or null.
+
+    A null key says nothing about identity, so such records are aligned by content
+    instead of being paired with every other null-keyed record.
+    """
     values = []
     for name in key:
-        if name not in record:
+        if record.get(name) is None:
             return None
         values.append(record[name])
     return json.dumps(values, sort_keys=True, ensure_ascii=False, default=str)

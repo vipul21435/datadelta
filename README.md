@@ -100,7 +100,7 @@ digits stay strings. `--no-infer-types` keeps every cell a string.
 
 1. `--key a,b`: equal key values mean the same record. This is deterministic, rule-based linkage in record-linkage
    terms. If a key value repeats, its copies are paired by content and then by position. A record missing a key
-   field goes through the content steps below, first against the other version's key-less records and then
+   field, or whose key value is null, goes through the content steps below, first against the other version's key-less records and then
    against its keyed records that the key left unpaired; two keyed records are never paired by content. A key
    field that is in no record of a version is an error (exit 2), and records missing the key give a warning on
    stderr.

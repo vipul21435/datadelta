@@ -181,3 +181,10 @@ def test_keyless_record_can_pair_with_an_unmatched_keyed_record():
 def test_two_keyed_records_are_never_paired_by_content():
     al = align([{"id": 1, "t": "same text"}], [{"id": 2, "t": "same text"}], key=["id"])
     assert al.matches == [] and al.old_only == [0] and al.new_only == [0]
+
+
+def test_null_keys_are_treated_as_missing():
+    old = [{"id": None, "t": "red green blue"}, {"id": None, "t": "cat dog fish"}]
+    new = [{"id": None, "t": "cat dog fish"}, {"id": None, "t": "red green blue"}]
+    al = align(old, new, key=["id"])
+    assert {(m.old, m.new, m.method) for m in al.matches} == {(0, 1, "hash"), (1, 0, "hash")}
