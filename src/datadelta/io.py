@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import csv
 import json
+import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -32,24 +34,29 @@ def detect_format(path: str | Path) -> str:
     raise FormatError(f"cannot tell the format of {path!s} from its extension; pass a format")
 
 
+_INT = re.compile(r"-?(?:0|[1-9][0-9]*)")
+_FLOAT = re.compile(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?")
+
+
 def _infer_scalar(text: str) -> Any:
-    """Turn a CSV cell into int, float or None where that is unambiguous."""
+    """Turn a CSV cell into int, float or None only where nothing is lost.
+
+    An empty cell is None. A cell becomes an int when it is plain ASCII digits with an
+    optional minus and no zero padding ("7", "-12"; not "007", "+5", "1_000", "-0"), and a
+    float when it has the same form with a fraction or exponent ("0.5", "1e3"). Anything
+    else, including non-ASCII digits, stays a string. Floats still lose trailing zeros:
+    "1.50" and "1.5" both read as 1.5.
+    """
     if text == "":
         return None
-    stripped = text.strip()
-    if stripped != text or not stripped:
-        return text
-    try:
-        return int(stripped)
-    except ValueError:
-        pass
-    try:
-        value = float(stripped)
-    except ValueError:
-        return text
-    if value != value or value in (float("inf"), float("-inf")):
-        return text
-    return value
+    if _INT.fullmatch(text):
+        value = int(text)
+        return value if str(value) == text else text
+    if _FLOAT.fullmatch(text):
+        number = float(text)
+        if math.isfinite(number):
+            return number
+    return text
 
 
 def read_jsonl(path: str | Path) -> list[Record]:

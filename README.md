@@ -91,8 +91,10 @@ schema change. Exit status 2 means the input could not be read. `examples/quicks
 
 ## How it works
 
-**Reading.** JSONL, a JSON array (or an object holding one list of records), CSV and TSV (cells that look like
-numbers become numbers, empty cells become null; `--no-infer-types` keeps strings), and Parquet with the extra.
+**Reading.** JSONL, a JSON array (or an object holding one list of records), CSV and TSV, and Parquet with the
+extra. In CSV and TSV, empty cells become null and a cell becomes a number only when it is plain ASCII digits with
+an optional minus, a fraction or an exponent, and no zero padding or plus sign; "007", "+5", "1_000" and non-ASCII
+digits stay strings. `--no-infer-types` keeps every cell a string.
 
 **Alignment** is a cascade; each step sees only the records the previous steps left unpaired.
 
@@ -257,6 +259,8 @@ generation included, took 8.5 s (`pytest tests/test_scale.py --durations=1`).
 - Greedy pairing is not a maximum-weight matching.
 - Field comparison is top-level: a change inside a nested list or object is one `value` edit, with no path into it.
   There is no notion of a renamed field either: a rename shows as one field removed and one added.
+- CSV number inference drops trailing zeros: "1.50" and "1.5" both read as 1.5. Use `--no-infer-types` when that
+  difference matters.
 - Categorical detection is the fixed rule described under Drift; `--max-categories` is its only control.
 - Both versions are held in memory as Python objects. The largest input tried is the 44 MB alpaca-cleaned file.
 

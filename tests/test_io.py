@@ -62,3 +62,42 @@ def test_byte_order_mark_is_ignored(tmp_path):
     json_path = tmp_path / "bom.json"
     json_path.write_text(bom + '[{"id": 1}]', encoding="utf-8")
     assert read_records(json_path) == [{"id": 1}]
+
+
+@pytest.mark.parametrize(
+    ("cell", "expected"),
+    [
+        ("7", 7),
+        ("-12", -12),
+        ("0", 0),
+        ("0.5", 0.5),
+        ("1e3", 1000.0),
+        ("007", "007"),
+        ("0010", "0010"),
+        ("+5", "+5"),
+        ("1_000", "1_000"),
+        ("-0", "-0"),
+        ("７", "７"),  # full-width digit
+        ("٧", "٧"),  # Arabic-Indic digit
+        (" 5", " 5"),
+        ("inf", "inf"),
+        ("nan", "nan"),
+        ("1e999", "1e999"),
+        ("", None),
+    ],
+)
+def test_csv_inference_keeps_text_that_would_change(tmp_path, cell, expected):
+    path = tmp_path / "a.csv"
+    path.write_text(f"c\n{cell}\n" if cell else "c,d\n,x\n", encoding="utf-8")
+    assert read_records(path)[0]["c"] == expected
+
+
+def test_zero_padded_codes_are_edits_and_keys_do_not_collide(tmp_path):
+    from datadelta.diff import diff
+
+    a, b = tmp_path / "a.csv", tmp_path / "b.csv"
+    a.write_text("k,code\n01,007\n1,0010\n", encoding="utf-8")
+    b.write_text("k,code\n01,7\n1,10\n", encoding="utf-8")
+    result = diff(read_records(a), read_records(b), key=["k"])
+    assert result.counts()["edited"] == 2
+    assert result.method_counts()["key"] == 2
