@@ -188,3 +188,32 @@ def test_null_keys_are_treated_as_missing():
     new = [{"id": None, "t": "cat dog fish"}, {"id": None, "t": "red green blue"}]
     al = align(old, new, key=["id"])
     assert {(m.old, m.new, m.method) for m in al.matches} == {(0, 1, "hash"), (1, 0, "hash")}
+
+
+def test_capped_index_finds_exactly_the_pairs_whose_capped_prefixes_meet():
+    from collections import Counter
+
+    from datadelta.align import _prefix_len
+
+    rng = random.Random(21)
+    vocab = [f"w{k}" for k in range(30)]
+    t, k = 0.3, 3
+    for _ in range(20):
+        old = {i: frozenset(rng.sample(vocab, rng.randint(1, 15))) for i in range(20)}
+        new = {i: frozenset(rng.sample(vocab, rng.randint(1, 15))) for i in range(20)}
+        df = Counter()
+        for s in list(old.values()) + list(new.values()):
+            df.update(s)
+        rank = {tok: r for r, tok in enumerate(sorted(df, key=lambda x: (df[x], x)))}
+
+        def capped(s, rank=rank):
+            ordered = sorted(s, key=rank.__getitem__)
+            return set(ordered[: min(_prefix_len(len(ordered), t), k)])
+
+        expected = {
+            (i, j)
+            for i, a in old.items()
+            for j, b in new.items()
+            if jaccard(a, b) >= t - 1e-9 and capped(a) & capped(b)
+        }
+        assert {(i, j) for _, i, j in similar_pairs(old, new, t, block_tokens=k)} == expected
