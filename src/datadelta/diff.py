@@ -145,6 +145,7 @@ def diff(
     min_similarity: float = 0.5,
     rewrite_threshold: float = 0.5,
     fuzzy: bool = True,
+    block_tokens: int | None = 8,
 ) -> DiffResult:
     """Align ``old`` and ``new`` and describe every record.
 
@@ -152,7 +153,15 @@ def diff(
     ``rewrite_threshold`` is the word-level similarity under which a text edit counts as
     a rewrite.
     """
-    al = align(old, new, key=key, norm=norm, min_similarity=min_similarity, fuzzy=fuzzy)
+    al = align(
+        old,
+        new,
+        key=key,
+        norm=norm,
+        min_similarity=min_similarity,
+        fuzzy=fuzzy,
+        block_tokens=block_tokens,
+    )
     changes: list[RecordChange] = []
     for m in al.matches:
         if m.method == "hash":

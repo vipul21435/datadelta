@@ -144,3 +144,21 @@ def test_alignment_is_symmetric():
         assert ab.old_only == ba.new_only
         assert ab.new_only == ba.old_only
         assert ab.moved_count == ba.moved_count
+
+
+def test_capped_index_finds_a_subset_and_is_exact_for_short_prefixes():
+    rng = random.Random(9)
+    vocab = [f"w{k}" for k in range(40)]
+    for _ in range(20):
+        old = {i: frozenset(rng.sample(vocab, rng.randint(1, 20))) for i in range(25)}
+        new = {i: frozenset(rng.sample(vocab, rng.randint(1, 20))) for i in range(25)}
+        exact = {(i, j) for _, i, j in similar_pairs(old, new, 0.3)}
+        capped = {(i, j) for _, i, j in similar_pairs(old, new, 0.3, block_tokens=2)}
+        assert capped <= exact
+        # A cap at least as long as every exact prefix changes nothing.
+        assert {(i, j) for _, i, j in similar_pairs(old, new, 0.3, block_tokens=20)} == exact
+
+
+def test_negative_block_tokens_rejected():
+    with pytest.raises(ValueError):
+        align([{"t": "a"}], [{"t": "b"}], block_tokens=-1)

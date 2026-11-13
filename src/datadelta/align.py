@@ -96,13 +96,19 @@ def similar_pairs(
     old_sets: dict[int, frozenset[str]],
     new_sets: dict[int, frozenset[str]],
     threshold: float,
+    block_tokens: int | None = None,
 ) -> list[tuple[float, int, int]]:
-    """Every (similarity, old, new) with token Jaccard >= ``threshold``.
+    """(similarity, old, new) for pairs with token Jaccard >= ``threshold``.
 
     Tokens are ranked rarest first over both pools. Two sets with Jaccard >= t share at
     least ceil(t * |x|) tokens, so they must share a token within their first
-    |x| - ceil(t * |x|) + 1 rarest ones; only pairs that do are scored. The result equals a
-    brute-force scan of all pairs.
+    |x| - ceil(t * |x|) + 1 rarest ones; only pairs that do are scored. With
+    ``block_tokens`` unset (or 0) the result equals a brute-force scan of all pairs.
+
+    ``block_tokens = k`` indexes at most the k rarest tokens of each set. That bounds the
+    work on large pools of long records, and it can miss a qualifying pair whose shared
+    tokens are all outside both capped prefixes. Sets whose exact prefix is at most k
+    tokens long lose nothing.
     """
     if not 0.0 < threshold <= 1.0:
         raise ValueError("threshold must be in (0, 1]")
@@ -115,7 +121,10 @@ def similar_pairs(
 
     def prefix(s: frozenset[str]) -> list[str]:
         ordered = sorted(s, key=rank.__getitem__)
-        return ordered[: _prefix_len(len(ordered), threshold)]
+        length = _prefix_len(len(ordered), threshold)
+        if block_tokens:
+            length = min(length, block_tokens)
+        return ordered[:length]
 
     index: dict[str, list[int]] = defaultdict(list)
     for j, s in new_sets.items():
@@ -199,6 +208,7 @@ def _content_align(
     new_idx: list[int],
     min_similarity: float,
     fuzzy: bool,
+    block_tokens: int | None,
 ) -> tuple[list[Match], list[int], list[int]]:
     matches: list[Match] = []
     m, old_idx, new_idx = _match_equal(old.hash, new.hash, old_idx, new_idx, "hash")
@@ -211,6 +221,7 @@ def _content_align(
             {i: old.tokens(i) for i in old_idx},
             {j: new.tokens(j) for j in new_idx},
             min_similarity,
+            block_tokens,
         )
         chosen = greedy_pairs(scored)
         if chosen:
@@ -261,6 +272,7 @@ def align(
     norm: Normalization = STRICT,
     min_similarity: float = 0.5,
     fuzzy: bool = True,
+    block_tokens: int | None = 8,
 ) -> Alignment:
     """Pair each old record with at most one new record.
 
@@ -268,7 +280,12 @@ def align(
     within a version, the copies under it are paired by content and then by position.
     Records missing a key field, and every record when no key is given, are aligned by
     content: exact hash, then loose hash, then fuzzy token similarity.
+
+    ``block_tokens`` caps the candidate index at that many rarest tokens per record (see
+    :func:`similar_pairs`); 0 or None makes the fuzzy step exact.
     """
+    if block_tokens is not None and block_tokens < 0:
+        raise ValueError("block_tokens must be >= 0")
     if not 0.0 < min_similarity <= 1.0:
         raise ValueError("min_similarity must be in (0, 1]")
     oc = _Cache(old_records, norm)
@@ -294,7 +311,7 @@ def align(
             if len(olds) == 1 and len(news) == 1:
                 matches.append(Match(olds[0], news[0], "key"))
                 continue
-            m, ol, nl = _content_align(oc, nc, olds, news, min_similarity, fuzzy)
+            m, ol, nl = _content_align(oc, nc, olds, news, min_similarity, fuzzy, block_tokens)
             matches += m
             for i, j in zip(ol, nl, strict=False):
                 matches.append(Match(i, j, "key"))
@@ -310,7 +327,7 @@ def align(
         rest_new = list(range(len(new_records)))
 
     if rest_old and rest_new:
-        m, ol, nl = _content_align(oc, nc, rest_old, rest_new, min_similarity, fuzzy)
+        m, ol, nl = _content_align(oc, nc, rest_old, rest_new, min_similarity, fuzzy, block_tokens)
         matches += m
         old_only += ol
         new_only += nl
