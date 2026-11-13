@@ -5,9 +5,11 @@ The cascade, applied to whatever is still unpaired after each step:
 1. ``key``: records with equal key values are the same record (optional).
 2. ``hash``: equal canonical JSON under the chosen :class:`Normalization`.
 3. ``loose``: equal after every normalisation (case, whitespace, NFKC, punctuation).
-4. ``fuzzy``: token-set Jaccard similarity at or above a threshold, found with a prefix
-   filter index (the all-pairs similarity join of Chaudhuri, Ganti and Kaushik 2006 and
-   Bayardo, Ma and Srikant 2007) and paired greedily from the most similar pair down.
+4. ``fuzzy``: token-set Jaccard similarity at or above a threshold, paired greedily from
+   the most similar pair down. Candidates come from an inverted index over only the
+   rarest tokens of each set, enough that no pair above the threshold is missed; the idea
+   of indexing part of each vector is from Bayardo, Ma and Srikant, "Scaling Up All Pairs
+   Similarity Search", WWW 2007.
 
 Copies of the same content are paired first copy with first copy. Every tie is broken by
 a rule that does not depend on which version is called old, so aligning B to A gives the
