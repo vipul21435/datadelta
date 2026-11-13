@@ -175,9 +175,11 @@ The formulas:
 - Kolmogorov-Smirnov: D = max over v of |F_old(v) - F_new(v)| for the two empirical distribution functions. The
   p-value is the large-sample one, P(K > sqrt(nm / (n + m)) D), with K Kolmogorov distributed:
   P(K > x) = 2 Σ_k (-1)^(k-1) exp(-2 k² x²), or 1 - (sqrt(2π) / x) Σ_k exp(-(2k-1)² π² / (8 x²)) for small x (both
-  forms appear on Wikipedia's Kolmogorov-Smirnov test page). The tests match scipy's `ks_2samp` statistic on tied
-  data, and scipy's `kstwobign.sf` to 1e-10. scipy also computes exact p-values for small samples (its
-  documentation cites Hodges 1958); datadelta does not.
+  forms appear on Wikipedia's Kolmogorov-Smirnov test page). The p-value is reported only when nm / (n + m) is at
+  least 25; below that the report shows `-` (null in JSON). The tests match scipy's `ks_2samp` statistic on tied
+  data, and the p-value matches scipy's `kstwobign.sf(sqrt(nm / (n + m)) D)` to 1e-10. That is not the p-value
+  `ks_2samp` itself returns: scipy uses exact or finite-sample distributions where it can (its documentation cites
+  Hodges 1958), and datadelta does not.
 - Population stability index: bins are the deciles of the old values (repeated edges merged), p and q are the old
   and new bin shares floored at 1e-4, and PSI = Σ (q - p) ln(q / p). Yurdakul's thesis *Statistical Properties of
   Population Stability Index* (Western Michigan University, 2018) describes PSI as "a statistic that measures how
@@ -256,7 +258,7 @@ generation included, took 8.5 s (`pytest tests/test_scale.py --durations=1`).
 ## Limitations
 
 - KS p-values are asymptotic, with no exact small-sample computation and no tie correction, and text lengths are
-  often heavily tied.
+  often heavily tied. They are left out when nm / (n + m) < 25.
 - PSI bins come from the old version's deciles. When the old values are nearly constant, almost everything falls
   in one bin and PSI can be near 0 while KS shows a clear shift; the quickstart's `score` field does this (KS D 1,
   PSI 0).

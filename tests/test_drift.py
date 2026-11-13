@@ -33,7 +33,10 @@ def test_ks_statistic_matches_scipy(seed):
     ref = stats.ks_2samp(x, y, method="asymp")
     assert d == pytest.approx(ref.statistic, abs=1e-12)
     en = len(x) * len(y) / (len(x) + len(y))
-    assert p == pytest.approx(stats.kstwobign.sf(math.sqrt(en) * d), abs=1e-10)
+    if en < 25:
+        assert p is None
+    else:
+        assert p == pytest.approx(stats.kstwobign.sf(math.sqrt(en) * d), abs=1e-10)
 
 
 def test_ks_pvalue_close_to_scipy_for_large_samples():
@@ -44,7 +47,9 @@ def test_ks_pvalue_close_to_scipy_for_large_samples():
 
 
 def test_ks_identical_and_empty():
-    assert ks_2samp([1, 2, 3], [1, 2, 3]) == (0.0, 1.0)
+    assert ks_2samp([1, 2, 3], [1, 2, 3]) == (0.0, None)
+    assert ks_2samp([1], [2]) == (1.0, None)  # far too small for the asymptotic p
+    assert ks_2samp(list(range(50)), list(range(50))) == (0.0, 1.0)
     with pytest.raises(ValueError):
         ks_2samp([], [1])
 

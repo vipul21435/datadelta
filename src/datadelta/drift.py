@@ -47,12 +47,19 @@ def kolmogorov_sf(x: float) -> float:
     return max(0.0, min(1.0, 2.0 * s))
 
 
-def ks_2samp(x: Sequence[float], y: Sequence[float]) -> tuple[float, float]:
+KS_MIN_EFFECTIVE_N = 25
+"""The asymptotic KS p-value is reported only when n m / (n + m) reaches this."""
+
+
+def ks_2samp(x: Sequence[float], y: Sequence[float]) -> tuple[float, float | None]:
     """Two-sample Kolmogorov-Smirnov statistic D and its asymptotic two-sided p-value.
 
     D = max |F_x(v) - F_y(v)| over all observed v (ties handled). The p-value is
     P(K > sqrt(n m / (n + m)) D) under the Kolmogorov distribution, which is accurate for
-    large samples and conservative for heavily tied data.
+    large samples and conservative for heavily tied data. Below an effective sample size
+    n m / (n + m) of ``KS_MIN_EFFECTIVE_N`` the p-value is None rather than a misleading
+    number (for one value against one other value the asymptotic p is 0.70; the exact
+    p is 1).
     """
     n, m = len(x), len(y)
     if n == 0 or m == 0:
@@ -68,6 +75,8 @@ def ks_2samp(x: Sequence[float], y: Sequence[float]) -> tuple[float, float]:
             j += 1
         d = max(d, abs(i / n - j / m))
     en = n * m / (n + m)
+    if en < KS_MIN_EFFECTIVE_N:
+        return d, None
     return d, kolmogorov_sf(math.sqrt(en) * d)
 
 
