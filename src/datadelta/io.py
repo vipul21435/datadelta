@@ -96,9 +96,7 @@ def read_csv(path: str | Path, delimiter: str = ",", infer_types: bool = True) -
             if None in row:
                 raise FormatError(f"{path!s}:{reader.line_num}: more cells than header columns")
             if infer_types:
-                records.append(
-                    {k: None if v is None else _infer_scalar(v) for k, v in row.items()}
-                )
+                records.append({k: None if v is None else _infer_scalar(v) for k, v in row.items()})
             else:
                 records.append(dict(row))
     return records
