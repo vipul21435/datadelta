@@ -32,6 +32,7 @@ class RecordChange:
     moved: bool = False
     fields: list[FieldChange] = field(default_factory=list)
     duplicate_of: int | None = None
+    key: dict[str, Any] | None = None
 
     @property
     def classes(self) -> list[str]:
@@ -39,6 +40,8 @@ class RecordChange:
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {"status": self.status}
+        if self.key is not None:
+            out["key"] = self.key
         if self.old_index is not None:
             out["old_index"] = self.old_index
         if self.new_index is not None:
@@ -180,6 +183,16 @@ def diff(
         al.new_only, new, matched_new, norm, "added", "duplicated"
     ):
         changes.append(RecordChange(status=status, new_index=j, duplicate_of=dup))
+    if key:
+        for ch in changes:
+            if ch.old_index is not None:
+                rec = old[ch.old_index]
+            elif ch.new_index is not None:
+                rec = new[ch.new_index]
+            else:  # pragma: no cover - every change has at least one side
+                continue
+            if all(k in rec for k in key):
+                ch.key = {k: rec[k] for k in key}
     changes.sort(
         key=lambda c: (
             c.old_index if c.old_index is not None else len(old),

@@ -28,6 +28,7 @@ import json
 import unicodedata
 from dataclasses import dataclass
 from difflib import SequenceMatcher
+from os.path import commonprefix
 from typing import Any
 
 from .normalize import STRICT, Normalization, collapse_ws, loose_text, norm_value, words
@@ -128,6 +129,17 @@ def word_diff(a: str, b: str, context: int = 4) -> str:
     return " ".join(parts)
 
 
+def suffix_diff(a: str, b: str, context: int = 30) -> str:
+    """Show a truncation or extension as the shared start plus the cut or added tail."""
+    head = commonprefix([a, b])
+    common = len(head)
+    if len(head) > context:
+        head = "..." + head[-context:]
+    if len(a) > len(b):
+        return f"{head}[-{a[common:]}-]"
+    return f"{head}{{+{b[common:]}+}}"
+
+
 def classify_text(a: str, b: str, rewrite_threshold: float = 0.5) -> str:
     ca, cb = collapse_ws(a), collapse_ws(b)
     if ca == cb:
@@ -178,14 +190,14 @@ def compare_values(
         return FieldChange(name, "filled", old, new)
     if isinstance(old, str) and isinstance(new, str):
         a, b = norm_value(old, norm), norm_value(new, norm)
-        return FieldChange(
-            name,
-            classify_text(a, b, rewrite_threshold),
-            old,
-            new,
-            similarity=word_similarity(a, b),
-            word_diff=word_diff(a, b),
-        )
+        cls = classify_text(a, b, rewrite_threshold)
+        if cls == "whitespace":
+            shown = None  # a word diff of a whitespace edit is empty; show the values
+        elif cls in ("truncation", "extension"):
+            shown = suffix_diff(collapse_ws(a), collapse_ws(b))
+        else:
+            shown = word_diff(a, b)
+        return FieldChange(name, cls, old, new, similarity=word_similarity(a, b), word_diff=shown)
     if is_number(old) and is_number(new):
         if type(old) is not type(new) and old == new:
             return FieldChange(name, "type_change", old, new)

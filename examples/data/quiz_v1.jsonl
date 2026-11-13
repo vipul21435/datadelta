@@ -1,0 +1,10 @@
+{"id": 1, "question": "What is the boiling point of water at sea level?", "answer": "100 degrees Celsius", "topic": "physics"}
+{"id": 2, "question": "Who wrote Pride and Prejudice?", "answer": "Jane Austen", "topic": "literature"}
+{"id": 3, "question": "What is the capital of Australia?", "answer": "Sydney", "topic": "geography"}
+{"id": 4, "question": "How many legs does a spider have?", "answer": "Eight", "topic": "biology"}
+{"id": 5, "question": "what is the largest ocean on earth?", "answer": "The Pacific Ocean", "topic": "geography"}
+{"id": 6, "question": "Name the process plants use to make food.", "answer": "Photosynthesis, which uses sunlight, water and carbon dioxide.", "topic": "biology"}
+{"id": 7, "question": "What is 12 times 12?", "answer": "144", "topic": "math", "score": 0.9}
+{"id": 8, "question": "Which planet is known as the red planet?", "answer": "Mars", "topic": "astronomy"}
+{"id": 9, "question": "Translate hello into French.", "answer": "Bonjour", "topic": "language"}
+{"id": 10, "question": "What gas do humans exhale?", "answer": "Carbon   dioxide ", "topic": "biology"}
