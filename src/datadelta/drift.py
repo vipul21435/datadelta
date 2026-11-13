@@ -3,7 +3,8 @@
 Field kinds:
 
 - ``categorical``: strings, booleans or integers with at most ``max_categories`` distinct
-  values over both versions, and no string longer than 40 characters. Reported: value
+  values over both versions, no more distinct values than half the values, and no
+  string longer than 40 characters. Reported: value
   counts, the Jensen-Shannon divergence of the two distributions and, over paired
   records, the transition matrix of old value to new value (label flips).
 - ``numeric``: other ints and floats. Reported: mean, standard deviation, quantiles,
@@ -137,14 +138,17 @@ def field_kind(
     values = list(old_values) + list(new_values)
     if not values:
         return "other"
+
+    def few() -> bool:
+        distinct = len(set(values))
+        return distinct <= max_categories and distinct <= max(2, len(values) // 2)
+
     if all(_is_number(v) for v in values):
-        if all(isinstance(v, int) for v in values) and len(set(values)) <= max_categories:
+        if all(isinstance(v, int) for v in values) and few():
             return "categorical"
         return "numeric"
     if all(isinstance(v, (str, bool)) for v in values):
-        if len(set(values)) <= max_categories and all(
-            len(v) <= 40 for v in values if isinstance(v, str)
-        ):
+        if few() and all(len(v) <= 40 for v in values if isinstance(v, str)):
             return "categorical"
         if all(isinstance(v, str) for v in values):
             return "text"
@@ -208,16 +212,21 @@ def drift(
     fields: Sequence[str] | None = None,
     max_categories: int = 50,
     top: int = 10,
+    exclude: Sequence[str] = (),
 ) -> list[FieldDrift]:
     """Per-field shift between ``old`` and ``new``.
 
     ``result`` (from :func:`datadelta.diff.diff`) adds label transitions over paired
     records. ``fields`` limits the report; by default every field present in both
-    versions is summarised.
+    versions is summarised, except those in ``exclude`` (such as key fields).
     """
     if fields is None:
         seen_old = {k for r in old for k in r}
-        names = [k for k in dict.fromkeys(k for r in new for k in r) if k in seen_old]
+        names = [
+            k
+            for k in dict.fromkeys(k for r in new for k in r)
+            if k in seen_old and k not in exclude
+        ]
     else:
         names = list(fields)
     out: list[FieldDrift] = []

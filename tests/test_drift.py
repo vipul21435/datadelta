@@ -91,6 +91,8 @@ def test_field_kinds():
     assert field_kind([0, 1], [1, 1]) == "categorical"
     assert field_kind([0.5, 1.5], [2.5]) == "numeric"
     assert field_kind(list(range(100)), [3]) == "numeric"
+    assert field_kind([1, 2, 3], [4, 5]) == "numeric"  # every value distinct: an id
+    assert field_kind(["a", "b", "c"], ["d"]) == "text"
     assert field_kind(["pos", "neg"], ["neg"]) == "categorical"
     assert field_kind(["a long sentence " * 4], ["short"]) == "text"
     assert field_kind([[1]], [[2]]) == "other"
@@ -121,3 +123,6 @@ def test_drift_report_on_a_labelled_pair():
     assert text.stats["unigram_js_divergence"] > 0
     assert by_field["id"].kind == "numeric"
     assert by_field["id"].stats["psi"] == pytest.approx(0.0)
+    assert "id" not in {d.field for d in drift(old, new, result, exclude=["id"])}
+    only = drift(old, new, result, fields=["label"])
+    assert [d.field for d in only] == ["label"]
