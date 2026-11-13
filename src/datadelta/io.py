@@ -69,6 +69,8 @@ def read_jsonl(path: str | Path) -> list[Record]:
                 obj = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise FormatError(f"{path!s}:{lineno}: not valid JSON ({exc.msg})") from exc
+            except RecursionError as exc:
+                raise FormatError(f"{path!s}:{lineno}: JSON nested too deeply") from exc
             if not isinstance(obj, dict):
                 raise FormatError(f"{path!s}:{lineno}: expected a JSON object per line")
             records.append(obj)
@@ -83,6 +85,8 @@ def read_json(path: str | Path) -> list[Record]:
     except json.JSONDecodeError:
         # Many ".json" files on the web are really JSON Lines.
         return read_jsonl(path)
+    except RecursionError as exc:
+        raise FormatError(f"{path!s}: JSON nested too deeply") from exc
     if isinstance(obj, dict):
         # Accept {"data": [...]} style wrappers with exactly one list of objects.
         lists = [v for v in obj.values() if isinstance(v, list)]

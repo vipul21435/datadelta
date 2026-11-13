@@ -126,7 +126,13 @@ def js_divergence(p: Counter[Any] | dict[Any, float], q: Counter[Any] | dict[Any
 
 
 def _is_number(v: Any) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    """A finite int or float that converts to a float (huge integers do not)."""
+    if not isinstance(v, (int, float)) or isinstance(v, bool):
+        return False
+    try:
+        return math.isfinite(float(v))
+    except OverflowError:
+        return False
 
 
 def _values(records: Iterable[Record], name: str) -> list[Any]:

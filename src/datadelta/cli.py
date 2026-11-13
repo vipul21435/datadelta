@@ -10,7 +10,7 @@ from typing import Any
 
 from . import __version__
 from .align import key_of
-from .compare import MISSING
+from .compare import MISSING, format_delta
 from .diff import DiffResult, RecordChange, diff
 from .drift import FieldDrift, drift
 from .io import FORMATS, FormatError, read_records
@@ -268,7 +268,7 @@ def _show_one(ch: RecordChange, old: list[Record], new: list[Record]) -> str:
             if f.word_diff is not None:
                 lines.append(f"    {f.word_diff}")
             elif f.delta is not None:
-                lines.append(f"    {f.old} -> {f.new} (delta {f.delta:+g})")
+                lines.append(f"    {f.old} -> {f.new} (delta {format_delta(f.delta)})")
             else:
                 shown_old = "(missing)" if f.old is MISSING else json.dumps(f.old, default=str)
                 shown_new = "(missing)" if f.new is MISSING else json.dumps(f.new, default=str)
@@ -368,8 +368,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return int(args.func(args))
-    except (FormatError, OSError, ValueError) as exc:
+    except (FormatError, OSError, ValueError, OverflowError) as exc:
         print(f"datadelta: error: {exc}", file=sys.stderr)
+        return 2
+    except RecursionError:
+        print("datadelta: error: input is nested too deeply", file=sys.stderr)
         return 2
 
 

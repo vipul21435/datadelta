@@ -130,3 +130,9 @@ def test_drift_report_on_a_labelled_pair():
     assert "id" not in {d.field for d in drift(old, new, result, exclude=["id"])}
     only = drift(old, new, result, fields=["label"])
     assert [d.field for d in only] == ["label"]
+
+
+def test_huge_integers_are_not_numeric():
+    assert field_kind([10**400], [1.5]) == "other"
+    rows = drift([{"n": 10**400}], [{"n": 10**400 + 1}])
+    assert rows[0].kind == "other"

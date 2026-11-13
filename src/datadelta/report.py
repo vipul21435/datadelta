@@ -7,7 +7,7 @@ import random
 from collections.abc import Iterator, Sequence
 from typing import Any
 
-from .compare import MISSING
+from .compare import MISSING, format_delta
 from .diff import STATUSES, DiffResult, RecordChange
 from .drift import FieldDrift
 from .schema import SchemaDiff
@@ -114,7 +114,7 @@ def _describe(ch: RecordChange) -> str:
         if f.word_diff is not None:
             detail = _short(f.word_diff, 90)
         elif f.delta is not None:
-            detail = f"{_value(f.old)} -> {_value(f.new)} ({f.delta:+g})"
+            detail = f"{_value(f.old)} -> {_value(f.new)} ({format_delta(f.delta)})"
         else:
             detail = f"{_value(f.old)} -> {_value(f.new)}"
         parts.append(f"`{f.field}` {f.edit_class}: {detail}")

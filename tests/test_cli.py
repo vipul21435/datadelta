@@ -126,3 +126,21 @@ def test_unknown_key_exits_2_and_partial_key_warns(tmp_path, capsys):
     assert main(["diff", str(a), str(b), "--key", "id"]) == 0
     err = capsys.readouterr().err
     assert "1 of 2 old records lack the key" in err
+
+
+def test_huge_integers_and_deep_nesting_do_not_crash(tmp_path, capsys):
+    big = 10**400
+    a, b = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    _write_jsonl(a, [{"id": 1, "n": big}, {"id": 2, "n": big + 1}])
+    _write_jsonl(b, [{"id": 1, "n": big + 5}, {"id": 2, "n": big + 1}])
+    assert main(["diff", str(a), str(b), "--key", "id"]) == 0
+    assert "(+5)" in capsys.readouterr().out
+    assert main(["show", str(a), str(b), "--key", "id", "--key-value", "1"]) == 0
+    assert "delta +5" in capsys.readouterr().out
+    deep = tmp_path / "deep.jsonl"
+    deep.write_text('{"x": ' + "[" * 100_000 + "]" * 100_000 + "}\n", encoding="utf-8")
+    assert main(["diff", str(deep), str(deep)]) == 2
+    assert "nested too deeply" in capsys.readouterr().err
+    deep_json = tmp_path / "deep.json"
+    deep_json.write_text("[" * 100_000 + "]" * 100_000, encoding="utf-8")
+    assert main(["diff", str(deep_json), str(deep_json)]) == 2

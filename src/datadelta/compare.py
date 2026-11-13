@@ -92,6 +92,11 @@ def is_empty(value: Any) -> bool:
     return False
 
 
+def format_delta(delta: float) -> str:
+    """A signed delta; integers keep every digit (``:g`` would overflow on huge ones)."""
+    return f"{delta:+d}" if isinstance(delta, int) else f"{delta:+g}"
+
+
 def is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
