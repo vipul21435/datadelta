@@ -115,6 +115,10 @@ def test_drift_report_on_a_labelled_pair():
     assert by_field["label"].kind == "categorical"
     assert label["flips"] == 10 and label["paired"] == 60
     assert label["flip_share"] == pytest.approx(10 / 60)
+    cells = {(c["old"], c["new"]): c["count"] for c in label["transitions"]}
+    assert sum(cells.values()) == 60
+    assert cells[("pos", "neg")] + cells[("neg", "pos")] == 10
+    assert cells[("pos", "pos")] + cells[("neg", "neg")] == 50
     text = by_field["text"]
     assert text.kind == "text"
     assert text.stats["length"]["delta"]["mean"] == pytest.approx(len("extra words here"))

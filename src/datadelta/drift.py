@@ -6,7 +6,8 @@ Field kinds:
   values over both versions, no more distinct values than half the values, and no
   string longer than 40 characters. Reported: value
   counts, the Jensen-Shannon divergence of the two distributions and, over paired
-  records, the transition matrix of old value to new value (label flips).
+  records, the full transition matrix of old value to new value (``transitions``,
+  diagonal cells included) and its off-diagonal cells (label flips).
 - ``numeric``: other ints and floats. Reported: mean, standard deviation, quantiles,
   the two-sample Kolmogorov-Smirnov statistic and p-value, and the PSI.
 - ``text``: other strings. Reported: the same statistics on character length, and the
@@ -252,6 +253,9 @@ def drift(
                 stats["flip_share"] = stats["flips"] / pairs if pairs else 0.0
                 stats["top_flips"] = [
                     {"old": a, "new": b, "count": n} for (a, b), n in flips.most_common(top)
+                ]
+                stats["transitions"] = [
+                    {"old": a, "new": b, "count": n} for (a, b), n in trans.most_common()
                 ]
         elif kind == "numeric":
             stats.update(_shift([float(v) for v in vo], [float(v) for v in vn]))
