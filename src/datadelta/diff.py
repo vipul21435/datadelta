@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from .align import Alignment, align, jaccard
@@ -67,6 +67,9 @@ class DiffResult:
     changes: list[RecordChange]
     alignment: Alignment
     key: list[str] | None = None
+    norm: Normalization = STRICT
+    schema_only_fields: list[str] = field(default_factory=list)
+    """Fields present in only one version; reported as schema changes, not record edits."""
 
     def counts(self) -> dict[str, int]:
         c = Counter(ch.status for ch in self.changes)
@@ -146,13 +149,28 @@ def diff(
     rewrite_threshold: float = 0.5,
     fuzzy: bool = True,
     block_tokens: int | None = 8,
+    schema_fields_as_edits: bool = False,
 ) -> DiffResult:
     """Align ``old`` and ``new`` and describe every record.
 
     ``min_similarity`` is the token Jaccard threshold for fuzzy pairing;
     ``rewrite_threshold`` is the word-level similarity under which a text edit counts as
-    a rewrite.
+    a rewrite. A field that appears in only one version (a new column, say) is left out
+    of alignment and of record comparison, because otherwise it would mark every record
+    as edited; it is listed in ``schema_only_fields``. ``schema_fields_as_edits`` turns
+    that off.
     """
+    only: list[str] = []
+    if not schema_fields_as_edits:
+        old_fields = dict.fromkeys(k for r in old for k in r)
+        new_fields = dict.fromkeys(k for r in new for k in r)
+        only = [k for k in old_fields if k not in new_fields]
+        only += [k for k in new_fields if k not in old_fields]
+        only = [k for k in only if k not in norm.ignore_fields and k not in (key or ())]
+        if only and old and new:
+            norm = replace(norm, ignore_fields=tuple(norm.ignore_fields) + tuple(only))
+        else:
+            only = []
     al = align(
         old,
         new,
@@ -214,4 +232,4 @@ def diff(
             c.new_index if c.new_index is not None else -1,
         )
     )
-    return DiffResult(len(old), len(new), changes, al, list(key) if key else None)
+    return DiffResult(len(old), len(new), changes, al, list(key) if key else None, norm, only)

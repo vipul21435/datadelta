@@ -102,3 +102,15 @@ def test_diff_with_itself_is_empty_on_random_data():
     for _ in range(20):
         a = _random_dataset(rng, rng.randint(0, 30))
         assert diff(a, a).is_empty
+
+
+def test_field_in_one_version_only_is_not_a_record_edit():
+    old = [{"q": f"question {i}", "a": str(i)} for i in range(5)]
+    new = [dict(r, status="checked") for r in old]
+    new[2]["a"] = "changed"
+    result = diff(old, new)
+    assert result.schema_only_fields == ["status"]
+    assert result.counts()["unchanged"] == 4 and result.counts()["edited"] == 1
+    assert [f.field for f in result.changes[2].fields] == ["a"]
+    counted = diff(old, new, schema_fields_as_edits=True)
+    assert counted.counts()["edited"] == 5 and counted.schema_only_fields == []
